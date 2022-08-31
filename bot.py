@@ -17,6 +17,7 @@ bot.
 
 import logging
 import telegram
+from gspread import Client
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 from dotenv import load_dotenv
@@ -24,11 +25,31 @@ import os
 
 import gspread
 
+CONFIG_SHEET_NAME = "config"
+USERS_SHEET_NAME = "users"
+TOILETS_SHEET_NAME = "toilets"
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+
+def load_db(gc: Client) -> None:
+    """Load the db"""
+    global config, users, toilets
+
+    # Open the spreadsheet
+    spreadsheet = gc.open_by_key('1E3cQczj1a9f7vVhT0HkaXiJMcG7yfm_pzXCGB9m0MpE')
+
+    # Load all the worksheets
+    config = spreadsheet.worksheet(CONFIG_SHEET_NAME).get_all_values()
+    users = spreadsheet.worksheet(USERS_SHEET_NAME).get_all_values()
+    toilets = spreadsheet.worksheet(TOILETS_SHEET_NAME).get_all_values()
+    # TODO load all tables
+
+    return
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -55,15 +76,14 @@ def error(update, context):
 
 def main():
     """Start the bot."""
-    # Create the Updater and pass it your bot's token.
-    # Make sure to set use_context=True to use the new context based callbacks
-    # Post version 12 this will no longer be necessary
     gc = gspread.service_account(filename="./credentials.json")
 
     load_dotenv()
 
-    updater = Updater(os.environ.get('FLUSHBOTTOKEN'), use_context=True)
-
+    # Create the Updater and pass it your bot's token.
+    # Make sure to set use_context=True to use the new context based callbacks
+    # Post version 12 this will no longer be necessary
+    updater = Updater(os.environ.get('TOKEN'), use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
