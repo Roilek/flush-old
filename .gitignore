@@ -690,3 +690,5 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,macos,linux,windows,pycharm+all,vs
+
+credentials.json
