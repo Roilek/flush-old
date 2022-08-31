@@ -57,6 +57,7 @@ def load_db() -> None:
 
 
 
+
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
 def start(update, context):
@@ -84,7 +85,6 @@ def main():
 
     # Cache all the data
     load_db()
-    update_table(1,1,1,1)
 
 
     # Create the Updater and pass it your bot's token.
