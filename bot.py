@@ -25,6 +25,13 @@ import os
 
 import gspread
 
+# Load environment variables (secrets)
+load_dotenv()
+
+# Get the spreadsheet
+GSPREAD_INSTANCE = gspread.service_account(filename="./credentials.json")
+spreadsheet = GSPREAD_INSTANCE.open_by_key(os.environ.get('SPREADSHEET_ID'))
+
 CONFIG_SHEET_NAME = "config"
 USERS_SHEET_NAME = "users"
 TOILETS_SHEET_NAME = "toilets"
@@ -36,12 +43,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 
-def load_db(gc: Client) -> None:
+def load_db() -> None:
     """Load the db"""
     global config, users, toilets
-
-    # Open the spreadsheet
-    spreadsheet = gc.open_by_key('1E3cQczj1a9f7vVhT0HkaXiJMcG7yfm_pzXCGB9m0MpE')
 
     # Load all the worksheets
     config = spreadsheet.worksheet(CONFIG_SHEET_NAME).get_all_values()
@@ -50,6 +54,7 @@ def load_db(gc: Client) -> None:
     # TODO load all tables
 
     return
+
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -76,9 +81,11 @@ def error(update, context):
 
 def main():
     """Start the bot."""
-    gc = gspread.service_account(filename="./credentials.json")
 
-    load_dotenv()
+    # Cache all the data
+    load_db()
+    update_table(1,1,1,1)
+
 
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
@@ -105,6 +112,7 @@ def main():
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
     updater.idle()
+
 
 
 if __name__ == '__main__':
