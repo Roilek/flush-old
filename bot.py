@@ -47,6 +47,7 @@ def get_db_filename_path(filename: str) -> str:
     """Returns the path to a given db file"""
     return DATABASE_FOLDER_NAME + "/" + filename + ".csv"
 
+
 def load_db() -> None:
     """Load the all worksheets to csv files"""
 
@@ -74,7 +75,7 @@ def append_row(table_name: str, row_data: list) -> None:
     return
 
 
-def update_cell(table_name: str, row_id: int, col_id: int, new_value) -> None:
+def update_cell(table_name: str, row: int, col: int, new_value) -> None:
     """Updates a cell value on the csv and the GSheet"""
 
     # Update csv file
@@ -82,15 +83,30 @@ def update_cell(table_name: str, row_id: int, col_id: int, new_value) -> None:
 
     with open(filename, "r") as f:
         rows = list(csv.reader(f))
-        rows[row_id][col_id] = new_value
+        rows[row][col] = new_value
     with open(filename, "w") as f:
         csv.writer(f).writerows(rows)
 
-
     # Update GSheet file
-    spreadsheet.worksheet(table_name).update_cell(row_id+1, col_id+1, new_value)
+    spreadsheet.worksheet(table_name).update_cell(row + 1, col + 1, new_value)
 
     return
+
+
+def get_row(table_name: str, row: int) -> list:
+    """Retrieve a row of data, assuming the local database is up to date"""
+
+    filename = get_db_filename_path(table_name)
+
+    with open(filename, "r") as f:
+        rows = list(csv.reader(f))
+
+    return rows[row]
+
+
+def get_cell(table_name: str, row: int, col: int) -> any:
+    """Retrieve a cell value, assuming the local database is up to date"""
+    return get_row(table_name, row)[col]
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -126,7 +142,6 @@ def main():
     # Post version 12 this will no longer be necessary
     updater = Updater(os.environ.get('TOKEN'), use_context=True)
 
-
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
@@ -150,6 +165,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
-    #update_cell("enigma", 1, 0, "toto")
-    #writerow("enigma", [2, "name", "description", "answer", "Author", "feedback"])
+    # main()
+
+    """Tests"""
+    # print(get_cell("enigma", 1, 2))
+    # update_cell("enigma", 1, 0, "toto")
+    # writerow("enigma", [2, "name", "description", "answer", "Author", "feedback"])
