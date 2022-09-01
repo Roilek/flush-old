@@ -43,11 +43,15 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 
+def get_db_filename_path(filename: str) -> str:
+    """Returns the path to a given db file"""
+    return DATABASE_FOLDER_NAME + "/" + filename + ".csv"
+
 def load_db() -> None:
     """Load the all worksheets to csv files"""
 
     for worksheet in spreadsheet.worksheets():
-        filename = DATABASE_FOLDER_NAME + "/" + worksheet.title + ".csv"
+        filename = get_db_filename_path(worksheet.title)
         with open(filename, 'w') as f:
             writer = csv.writer(f)
             writer.writerows(worksheet.get_all_values())
@@ -55,17 +59,36 @@ def load_db() -> None:
     return
 
 
-def writerow(table_name: str, row_data: list) -> None:
+def append_row(table_name: str, row_data: list) -> None:
     """Appends a row on the csv and the GSheet"""
 
     # Update csv file
-    filename = DATABASE_FOLDER_NAME + "/" + table_name + ".csv"
+    filename = get_db_filename_path(table_name)
     with open(filename, "a") as f:
         writer = csv.writer(f)
         writer.writerow(row_data)
 
     # Update GSheet file
     spreadsheet.worksheet(table_name).append_row(row_data)
+
+    return
+
+
+def update_cell(table_name: str, row_id: int, col_id: int, new_value) -> None:
+    """Updates a cell value on the csv and the GSheet"""
+
+    # Update csv file
+    filename = get_db_filename_path(table_name)
+
+    with open(filename, "r") as f:
+        rows = list(csv.reader(f))
+        rows[row_id][col_id] = new_value
+    with open(filename, "w") as f:
+        csv.writer(f).writerows(rows)
+
+
+    # Update GSheet file
+    spreadsheet.worksheet(table_name).update_cell(row_id+1, col_id+1, new_value)
 
     return
 
@@ -127,6 +150,6 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
-    load_db()
+    main()
+    #update_cell("enigma", 1, 0, "toto")
     #writerow("enigma", [2, "name", "description", "answer", "Author", "feedback"])
