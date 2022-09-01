@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 import os
 
 import gspread
+import csv
 
 # Load environment variables (secrets)
 load_dotenv()
@@ -31,10 +32,6 @@ load_dotenv()
 # Get the spreadsheet
 GSPREAD_INSTANCE = gspread.service_account(filename="./credentials.json")
 spreadsheet = GSPREAD_INSTANCE.open_by_key(os.environ.get('SPREADSHEET_ID'))
-
-CONFIG_SHEET_NAME = "config"
-USERS_SHEET_NAME = "users"
-TOILETS_SHEET_NAME = "toilets"
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -44,17 +41,15 @@ logger = logging.getLogger(__name__)
 
 
 def load_db() -> None:
-    """Load the db"""
-    global config, users, toilets
+    """Load the all worksheets to csv files"""
 
-    # Load all the worksheets
-    config = spreadsheet.worksheet(CONFIG_SHEET_NAME).get_all_values()
-    users = spreadsheet.worksheet(USERS_SHEET_NAME).get_all_values()
-    toilets = spreadsheet.worksheet(TOILETS_SHEET_NAME).get_all_values()
-    # TODO load all tables
+    for worksheet in spreadsheet.worksheets():
+        filename = "database/" + worksheet.title + ".csv"
+        with open(filename, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerows(worksheet.get_all_values())
 
     return
-
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
