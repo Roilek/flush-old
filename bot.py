@@ -33,6 +33,9 @@ load_dotenv()
 GSPREAD_INSTANCE = gspread.service_account(filename="./credentials.json")
 spreadsheet = GSPREAD_INSTANCE.open_by_key(os.environ.get('SPREADSHEET_ID'))
 
+# database folder name
+DATABASE_FOLDER_NAME = "database"
+
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -44,12 +47,28 @@ def load_db() -> None:
     """Load the all worksheets to csv files"""
 
     for worksheet in spreadsheet.worksheets():
-        filename = "database/" + worksheet.title + ".csv"
+        filename = DATABASE_FOLDER_NAME + "/" + worksheet.title + ".csv"
         with open(filename, 'w') as f:
             writer = csv.writer(f)
             writer.writerows(worksheet.get_all_values())
 
     return
+
+
+def writerow(table_name: str, row_data: list) -> None:
+    """Appends a row on the csv and the GSheet"""
+
+    # Update csv file
+    filename = DATABASE_FOLDER_NAME + "/" + table_name + ".csv"
+    with open(filename, "a") as f:
+        writer = csv.writer(f)
+        writer.writerow(row_data)
+
+    # Update GSheet file
+    spreadsheet.worksheet(table_name).append_row(row_data)
+
+    return
+
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
@@ -108,4 +127,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    #main()
+    load_db()
+    #writerow("enigma", [2, "name", "description", "answer", "Author", "feedback"])
