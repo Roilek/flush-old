@@ -51,6 +51,8 @@ def get_db_filename_path(filename: str) -> str:
 def load_db() -> None:
     """Load the all worksheets to csv files"""
 
+    os.makedirs(DATABASE_FOLDER_NAME, exist_ok=True)
+
     for worksheet in spreadsheet.worksheets():
         filename = get_db_filename_path(worksheet.title)
         with open(filename, 'w') as f:
@@ -165,9 +167,10 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
+    main()
 
     """Tests"""
+    # load_db()
     # print(get_cell("enigma", 1, 2))
     # update_cell("enigma", 1, 0, "toto")
     # writerow("enigma", [2, "name", "description", "answer", "Author", "feedback"])
