@@ -62,7 +62,7 @@ def main():
 
     load_dotenv()
 
-    updater = Updater(os.environ.get('FLUSHBOTTOKEN'), use_context=True)
+    updater = Updater(os.environ.get('TOKEN'), use_context=True)
 
 
     # Get the dispatcher to register handlers
