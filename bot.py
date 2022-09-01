@@ -31,6 +31,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+load_dotenv()
+DEBUG = os.environ.get("DEBUG")
+
 
 # Define a few command handlers. These usually take the two arguments update and
 # context. Error handlers also receive the raised TelegramError object in error.
@@ -44,11 +47,6 @@ def help(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Help!')
 
 
-def echo(update: Update, context: CallbackContext) -> None:
-    """Echo the user message."""
-    update.message.reply_text(update.message.text)
-
-
 def error(update: Update, context: CallbackContext) -> None:
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -56,7 +54,28 @@ def error(update: Update, context: CallbackContext) -> None:
 
 def enigma(update: Update, context: CallbackContext) -> None:
     """Reacts to a n-digit code to select the enigma"""
-    update.message.reply_text(update.message.text)
+    update.message.reply_text("Please send me the n-digit code you see on the door to go on to the enigma")
+    return
+
+
+def handle_text(update: Update, context: CallbackContext) -> None:
+    """Dispatcher to handle the given text"""
+    data = update.message.text
+
+    # Is data an enigma id?
+    if data.startswith('#'):
+        if DEBUG:
+            update.message.reply_text("Let's start enigma number " + data[1:])  # to remove when todo is done
+        # TODO check if data[1:] is in the list of existing enigmas id
+    # If data is not an enigma id, it must be an answer
+    elif True:  # TODO Test if the user has already an enigma that he is trying to solve
+        if DEBUG:
+            update.message.reply_text("I see this is an answer to an enigma")
+        # TODO check if the answer to the enigma currently tried by the user is in data
+    else:
+        update.message.reply_text("You have to select an enigma before trying to solve it :)")
+
+    return
 
 
 def main() -> None:
@@ -70,7 +89,6 @@ def main() -> None:
 
     updater = Updater(os.environ.get('TOKEN'), use_context=True)
 
-
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
@@ -80,7 +98,7 @@ def main() -> None:
     dp.add_handler(CommandHandler("enigma", enigma))
 
     # on noncommand i.e message - echo the message on Telegram
-    dp.add_handler(MessageHandler(Filters.text, echo))
+    dp.add_handler(MessageHandler(Filters.text, handle_text))
 
     # log all errors
     dp.add_error_handler(error)
