@@ -4,7 +4,7 @@ Setup
 
 1. Install libs in requirements
 2. Create file .env at root
-3. Add to .env file a line FLUSHBOTTOKEN="TOKEN"
+3. Add to .env file a line TOKEN="TOKEN" (replace the last occurrence with the correct token)
 4. Replace TOKEN with a correct token
 5. Follow instructions to setup a service account: https://developers.google.com/sheets/api/quickstart/python
 6. Add the credentials.json file of the bot at the root
