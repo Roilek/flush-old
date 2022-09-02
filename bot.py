@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 def get_db_filename_path(filename: str) -> str:
     """Returns the path to a given db file"""
-    return DATABASE_FOLDER_NAME + "/" + filename + ".csv"
+    return os.path.join(DATABASE_FOLDER_NAME, filename + ".csv")
 
 
 def load_db() -> None:
