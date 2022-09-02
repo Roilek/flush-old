@@ -168,9 +168,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-    """Tests"""
-    # load_db()
-    # print(get_cell("enigma", 1, 2))
-    # update_cell("enigma", 1, 0, "toto")
-    # writerow("enigma", [2, "name", "description", "answer", "Author", "feedback"])
