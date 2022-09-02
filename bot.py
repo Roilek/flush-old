@@ -76,14 +76,24 @@ def update_cell(table_name: str, row: int, col: int, new_value) -> None:
     return
 
 
-def get_row(table_name: str, row: int) -> dict:
+def get_row(table_name: str, row: int) -> list:
     """Retrieve a row of data, assuming the local database is up to date
 
     row is the number of the data row (first data row will be 1)
-    Returns the row as dict with the header as keys
-    """
-    return dict(db[table_name].iloc[row - 1])
 
+    Returns the list with the required values
+    """
+    return db[table_name].iloc[row - 1].values.tolist()
+
+
+def get_col(table_name: str, col: int) -> list:
+    """Retrieve a row of data, assuming the local database is up to date
+
+    col is the number of the data row (first data row will be 1)
+
+    Returns the list with the required values
+    """
+    return db[table_name].iloc[:, col - 1].values.tolist()
 
 def get_cell(table_name: str, row: int, col: int) -> any:
     """Retrieve a cell value, assuming the local database is up to date"""
