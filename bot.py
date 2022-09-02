@@ -17,24 +17,22 @@ bot.
 
 import logging
 import telegram
-from gspread import Client
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 from dotenv import load_dotenv
 import os
 
-import gspread
-import csv
+import gspread as gs
+import pandas as pd
 
 # Load environment variables (secrets)
 load_dotenv()
 
 # Get the spreadsheet
-GSPREAD_INSTANCE = gspread.service_account(filename="./credentials.json")
-spreadsheet = GSPREAD_INSTANCE.open_by_key(os.environ.get('SPREADSHEET_ID'))
+GS_INSTANCE = gs.service_account(filename="./credentials.json")
+spreadsheet = GS_INSTANCE.open_by_key(os.environ.get('SPREADSHEET_ID'))
 
-# database folder name
-DATABASE_FOLDER_NAME = "database"
+db: dict[str, pd.DataFrame] = dict()
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -43,33 +41,18 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 
-def get_db_filename_path(filename: str) -> str:
-    """Returns the path to a given db file"""
-    return os.path.join(DATABASE_FOLDER_NAME, filename + ".csv")
-
-
 def load_db() -> None:
-    """Load the all worksheets to csv files"""
-
-    os.makedirs(DATABASE_FOLDER_NAME, exist_ok=True)
-
-    for worksheet in spreadsheet.worksheets():
-        filename = get_db_filename_path(worksheet.title)
-        with open(filename, 'w') as f:
-            writer = csv.writer(f)
-            writer.writerows(worksheet.get_all_values())
-
+    """Load the all worksheets of the GSheet to the db dict"""
+    global db
+    db = {ws.title: pd.DataFrame(ws.get_all_records()) for ws in spreadsheet.worksheets()}
     return
 
 
 def append_row(table_name: str, row_data: list) -> None:
-    """Appends a row on the csv and the GSheet"""
+    """Appends a row on the DataFrame and the GSheet"""
 
-    # Update csv file
-    filename = get_db_filename_path(table_name)
-    with open(filename, "a") as f:
-        writer = csv.writer(f)
-        writer.writerow(row_data)
+    # Update local db
+    db[table_name].loc[len(db[table_name])] = row_data
 
     # Update GSheet file
     spreadsheet.worksheet(table_name).append_row(row_data)
@@ -78,37 +61,33 @@ def append_row(table_name: str, row_data: list) -> None:
 
 
 def update_cell(table_name: str, row: int, col: int, new_value) -> None:
-    """Updates a cell value on the csv and the GSheet"""
+    """Updates a cell value on the DataFrame and the GSheet
 
-    # Update csv file
-    filename = get_db_filename_path(table_name)
+    row is the number of the data row (first data row will be 1)
+    col is the number of the column (first data column will be 1)
+    """
 
-    with open(filename, "r") as f:
-        rows = list(csv.reader(f))
-        rows[row][col] = new_value
-    with open(filename, "w") as f:
-        csv.writer(f).writerows(rows)
+    # Update local db
+    db[table_name].iat[row - 1, col - 1] = new_value
 
     # Update GSheet file
-    spreadsheet.worksheet(table_name).update_cell(row + 1, col + 1, new_value)
+    spreadsheet.worksheet(table_name).update_cell(row + 1, col, new_value)
 
     return
 
 
-def get_row(table_name: str, row: int) -> list:
-    """Retrieve a row of data, assuming the local database is up to date"""
+def get_row(table_name: str, row: int) -> dict:
+    """Retrieve a row of data, assuming the local database is up to date
 
-    filename = get_db_filename_path(table_name)
-
-    with open(filename, "r") as f:
-        rows = list(csv.reader(f))
-
-    return rows[row]
+    row is the number of the data row (first data row will be 1)
+    Returns the row as dict with the header as keys
+    """
+    return dict(db[table_name].iloc[row - 1])
 
 
 def get_cell(table_name: str, row: int, col: int) -> any:
     """Retrieve a cell value, assuming the local database is up to date"""
-    return get_row(table_name, row)[col]
+    return db[table_name].iat[row - 1, col - 1]
 
 
 # Define a few command handlers. These usually take the two arguments update and
