@@ -178,7 +178,7 @@ def register_new_user(user: dict) -> None:
 
 
 def start(update: Update, context: CallbackContext) -> None:
-    """Greets the ols user and greet + register the new user"""
+    """Greets the old user and greet + register the new user"""
 
     user = update.message.from_user
     user_ids = get_col(USERS_TABLE, USERS_ID)
@@ -198,23 +198,37 @@ def new_enigma(update: Update, context: CallbackContext) -> int:
     return EXPECT_ENIGMA_ID
 
 
+def construct_enigma_message(enigma_id: int) -> str:
+    """Constructs and formats enigma message from enigma id
+
+    :param enigma_id: The id of the enigma
+    :type enigma_id: int
+
+    :returns: The html string to be sent to the user
+    :rtype: str
+    """
+    enigma_ids = get_col(ENIGMA_TABLE, ENIGMA_UUID)
+
+    message_parts = list()
+    message_parts.append(' '.join(["<i>Enigma ", str(enigma_id), "</i>"]))
+    message_parts.append(' '.join(["<b>", get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_NAME), "</b>"]))
+    message_parts.append(get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_DESCRIPTION))
+
+    return '\n'.join(message_parts)
+
+
 def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
     """Checks if the enigma id entered by the user is valid and sends the enigma"""
     enigma_id = int(update.message.text)
-    # Get t
     enigma_ids = get_col(ENIGMA_TABLE, ENIGMA_UUID)
     if DEBUG:
         print(enigma_ids)
 
     if enigma_id in enigma_ids:
+        # Updates the current enigma of the user
         update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
                     USERS_CURRENT_ENIGMA, enigma_id)
-        enigma_text = "<i>Enigma " + str(enigma_id) + "</i>"
-        enigma_text += "\n"
-        enigma_text += "<b>" + get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_NAME) + "</b>"
-        enigma_text += "\n"
-        enigma_text += get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_DESCRIPTION)
-        update.message.reply_text(enigma_text, ParseMode.HTML)
+        update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
         update.message.reply_text("Please send me the answer you think is correct!")
         return EXPECT_ANSWER_TO_ENIGMA
     else:
