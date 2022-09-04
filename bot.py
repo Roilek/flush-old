@@ -228,6 +228,7 @@ def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
         # Updates the current enigma of the user
         update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
                     USERS_CURRENT_ENIGMA, enigma_id)
+        # Send the enigma to the user
         update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
         update.message.reply_text("Please send me the answer you think is correct!")
         return EXPECT_ANSWER_TO_ENIGMA
@@ -237,14 +238,31 @@ def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
         return EXPECT_ENIGMA_ID
 
 
-def validate_enigma():
+def validate_enigma(update: Update, context: CallbackContext) -> int:
     """Validates the answer of the user"""
+    user_answer = update.message.text
+    enigma_id = get_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(update.message.from_user.id), USERS_CURRENT_ENIGMA)
+    right_answer = str(get_cell(ENIGMA_TABLE, get_col(ENIGMA_TABLE, ENIGMA_UUID).index(enigma_id), ENIGMA_ANSWER))
+
+    if DEBUG:
+        print(user_answer)
+        print(right_answer)
+        print(right_answer.split(', '))
+
+    if user_answer in right_answer.split(', '):
+        update.message.reply_text("Congratulations, you found the right answer!")
+        # TODO remove trying current enigma
+        # TODO register completed this enigma
+        return ConversationHandler.END
+    else:
+        update.message.reply_text("Sorry, your answer is wrong... You can try again or send /cancel to stop trying.")
+        return EXPECT_ANSWER_TO_ENIGMA
     pass
 
 
 def cancel(update: Update, context: CallbackContext):
     """Handles the abortion of the enigma selection and solving attempt"""
-    # TODO remove trying something
+    # TODO remove trying current enigma
     update.message.reply_text(
         'Enigma selection or resolution cancelled by user. Bye. Send /new_enigma to start again')
     return ConversationHandler.END
