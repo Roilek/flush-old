@@ -40,6 +40,17 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+EXPECT_ENIGMA_ID, EXPECT_ANSWER_TO_ENIGMA = range(2)
+
+CONFIG_TABLE = "config"
+CONFIG_ROW_OFFSET, CONFIG_USERS_UUID_OFFSET = range(2)
+
+ENIGMA_TABLE = "enigma"
+ENIGMA_UUID, ENIGMA_NAME, ENIGMA_DESCRIPTION, ENIGMA_ANSWER, ENIGMA_AUTHOR, ENIGMA_FEEDBACK = range(6)
+
+USERS_TABLE = "users"
+USERS_UUID, USERS_ID, USERS_FIRST_NAME, USERS_LAST_NAME, USERS_SCORE, USERS_CURRENT_ENIGMA = range(6)
+
 
 def load_db() -> None:
     """Load the all worksheets of the GSheet to the db dict"""
@@ -48,8 +59,10 @@ def load_db() -> None:
     return
 
 
-def append_row(table_name: str, row_data: list) -> None:
-    """Appends a row on the DataFrame and the GSheet"""
+def append_row(table_name: str, row_data: list) -> int:
+    """Appends a row on the DataFrame and the GSheet
+
+    Returns the number of the added row"""
 
     # Update local db
     db[table_name].loc[len(db[table_name])] = row_data
@@ -57,7 +70,7 @@ def append_row(table_name: str, row_data: list) -> None:
     # Update GSheet file
     spreadsheet.worksheet(table_name).append_row(row_data)
 
-    return
+    return len(db[table_name]) - 1
 
 
 def update_cell(table_name: str, row: int, col: int, new_value) -> None:
@@ -68,10 +81,10 @@ def update_cell(table_name: str, row: int, col: int, new_value) -> None:
     """
 
     # Update local db
-    db[table_name].iat[row - 1, col - 1] = new_value
+    db[table_name].iat[row, col] = new_value
 
     # Update GSheet file
-    spreadsheet.worksheet(table_name).update_cell(row + 1, col, new_value)
+    spreadsheet.worksheet(table_name).update_cell(row + 2, col + 1, new_value)
 
     return
 
@@ -83,7 +96,7 @@ def get_row(table_name: str, row: int) -> list:
 
     Returns the list with the required values
     """
-    return db[table_name].iloc[row - 1].values.tolist()
+    return db[table_name].iloc[row].values.tolist()
 
 
 def get_col(table_name: str, col: int) -> list:
@@ -93,11 +106,12 @@ def get_col(table_name: str, col: int) -> list:
 
     Returns the list with the required values
     """
-    return db[table_name].iloc[:, col - 1].values.tolist()
+    return db[table_name].iloc[:, col].values.tolist()
+
 
 def get_cell(table_name: str, row: int, col: int) -> any:
     """Retrieve a cell value, assuming the local database is up to date"""
-    return db[table_name].iat[row - 1, col - 1]
+    return db[table_name].iat[row, col]
 
 
 # Define a few command handlers. These usually take the two arguments update and
