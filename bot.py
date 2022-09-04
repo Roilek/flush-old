@@ -184,10 +184,12 @@ def start(update: Update, context: CallbackContext) -> None:
     user_ids = get_col(USERS_TABLE, USERS_ID)
 
     if user.id in user_ids:
-        update.message.reply_text("Welcome back " + get_cell(USERS_TABLE, user_ids.index(user.id), USERS_FIRST_NAME))
+        message = ' '.join(["Welcome back", get_cell(USERS_TABLE, user_ids.index(user.id), USERS_FIRST_NAME)])
     else:
         register_new_user(user)
-        update.message.reply_text("Welcome " + user.first_name + "! Please use /help to know what is next!")
+        message = ' '.join(["Welcome", user.first_name, "!", "Please use /help to know what is next!"])
+
+    update.message.reply_text(message)
 
     return
 
@@ -219,8 +221,10 @@ def construct_enigma_message(enigma_id: int) -> str:
 
 def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
     """Checks if the enigma id entered by the user is valid and sends the enigma"""
+
     enigma_id = int(update.message.text)
     enigma_ids = get_col(ENIGMA_TABLE, ENIGMA_UUID)
+
     if DEBUG:
         print(enigma_ids)
 
@@ -240,19 +244,18 @@ def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
 
 def validate_enigma(update: Update, context: CallbackContext) -> int:
     """Validates the answer of the user"""
+
     user_answer = update.message.text
-    enigma_id = get_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(update.message.from_user.id), USERS_CURRENT_ENIGMA)
+    enigma_id = get_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(update.message.from_user.id),
+                         USERS_CURRENT_ENIGMA)
     right_answer = str(get_cell(ENIGMA_TABLE, get_col(ENIGMA_TABLE, ENIGMA_UUID).index(enigma_id), ENIGMA_ANSWER))
 
     if DEBUG:
         print(user_answer)
         print(right_answer)
-        print(right_answer.split(', '))
 
     if user_answer in right_answer.split(', '):
-        update.message.reply_text("Congratulations, you found the right answer!")
-        # TODO remove trying current enigma
-        # TODO register completed this enigma
+        update.message.reply_text("Congratulations, you've found the right answer!")
         return ConversationHandler.END
     else:
         update.message.reply_text("Sorry, your answer is wrong... You can try again or send /cancel to stop trying.")
@@ -262,7 +265,6 @@ def validate_enigma(update: Update, context: CallbackContext) -> int:
 
 def cancel(update: Update, context: CallbackContext):
     """Handles the abortion of the enigma selection and solving attempt"""
-    # TODO remove trying current enigma
     update.message.reply_text(
         'Enigma selection or resolution cancelled by user. Bye. Send /new_enigma to start again')
     return ConversationHandler.END
