@@ -47,13 +47,13 @@ logger = logging.getLogger(__name__)
 EXPECT_ENIGMA_ID, EXPECT_ANSWER_TO_ENIGMA = range(2)
 
 CONFIG_TABLE = "config"
-CONFIG_ROW_OFFSET, CONFIG_USERS_UUID_OFFSET = range(1, 3)
+CONFIG_ROW_OFFSET, CONFIG_USERS_UUID_OFFSET = range(2)
 
 ENIGMA_TABLE = "enigma"
-ENIGMA_UUID, ENIGMA_NAME, ENIGMA_DESCRIPTION, ENIGMA_ANSWER, ENIGMA_AUTHOR, ENIGMA_FEEDBACK = range(1, 7)
+ENIGMA_UUID, ENIGMA_NAME, ENIGMA_DESCRIPTION, ENIGMA_ANSWER, ENIGMA_AUTHOR, ENIGMA_FEEDBACK = range(6)
 
 USERS_TABLE = "users"
-USERS_UUID, USERS_ID, USERS_FIRST_NAME, USERS_LAST_NAME, USERS_SCORE, USERS_CURRENT_ENIGMA = range(1, 7)
+USERS_UUID, USERS_ID, USERS_FIRST_NAME, USERS_LAST_NAME, USERS_USERNAME, USERS_SCORE, USERS_CURRENT_ENIGMA = range(7)
 
 
 def load_db() -> None:
@@ -139,7 +139,6 @@ def get_col(table_name: str, col: int) -> list:
     return db[table_name].iloc[:, col].values.tolist()
 
 
-
 def get_cell(table_name: str, row: int, col: int) -> any:
     """Retrieve a cell's data, assuming the local database is up to date
 
@@ -157,20 +156,39 @@ def get_cell(table_name: str, row: int, col: int) -> any:
     return db[table_name].iat[row, col]
 
 
+def register_new_user(user: dict) -> None:
+    """Registers a new user to the database
 
-# Define a few command handlers. These usually take the two arguments update and
-# context. Error handlers also receive the raised TelegramError object in error.
-def start(update, context):
-    """Send a message when the command /start is issued."""
+    :param user: The user dict of informations as sent by Telegram
+    :type user: dict
+
+    :returns: None
+    """
+
+    # Get the next uuid to attribute
+    uuid_offset = int(get_cell(CONFIG_TABLE, 0, CONFIG_USERS_UUID_OFFSET))
+
+    # Register the new user with a new uuid
+    append_row(USERS_TABLE, [int(uuid_offset), int(user.id), user.first_name, user.last_name, user.username, 0, 0])
+
+    # Update the uuid
+    update_cell(CONFIG_TABLE, 0, CONFIG_USERS_UUID_OFFSET, uuid_offset + 1)
+
+    return
+
+
+def start(update: Update, context: CallbackContext) -> None:
+    """Greets the ols user and greet + register the new user"""
+
     user = update.message.from_user
     user_ids = get_col(USERS_TABLE, USERS_ID)
+
     if user.id in user_ids:
         update.message.reply_text("Welcome back " + get_cell(USERS_TABLE, user_ids.index(user.id), USERS_FIRST_NAME))
     else:
-        uuid_offset = int(get_cell(CONFIG_TABLE, 0, CONFIG_USERS_UUID_OFFSET))
-        append_row(USERS_TABLE, [int(uuid_offset), int(user.id), user.first_name, user.last_name, 0, 0])
-        update_cell(CONFIG_TABLE, 1, CONFIG_USERS_UUID_OFFSET, uuid_offset + 1)
-        update.message.reply_text("Welcome! Please use /help to know what is next!")
+        register_new_user(user)
+        update.message.reply_text("Welcome " + user.first_name + "! Please use /help to know what is next!")
+
     return
 
 
@@ -189,7 +207,8 @@ def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
         print(enigma_ids)
 
     if enigma_id in enigma_ids:
-        update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)), USERS_CURRENT_ENIGMA, enigma_id)
+        update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
+                    USERS_CURRENT_ENIGMA, enigma_id)
         enigma_text = "<i>Enigma " + str(enigma_id) + "</i>"
         enigma_text += "\n"
         enigma_text += "<b>" + get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_NAME) + "</b>"
