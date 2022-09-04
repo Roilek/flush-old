@@ -17,7 +17,7 @@ bot.
 
 import logging
 import telegram
-from telegram import Update
+from telegram import Update, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 from dotenv import load_dotenv
@@ -113,7 +113,7 @@ def get_col(table_name: str, col: int) -> list:
 
 def get_cell(table_name: str, row: int, col: int) -> any:
     """Retrieve a cell value, assuming the local database is up to date"""
-    return db[table_name].iat[row - 1, col - 1]
+    return db[table_name].iat[row, col - 1]
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -123,11 +123,10 @@ def start(update, context):
     user = update.message.from_user
     user_ids = get_col(USERS_TABLE, USERS_ID)
     if user.id in user_ids:
-        update.message.reply_text("Welcome back " + get_cell(USERS_TABLE, user_ids.index(user.id) + 1, USERS_FIRST_NAME))
+        update.message.reply_text("Welcome back " + get_cell(USERS_TABLE, user_ids.index(user.id), USERS_FIRST_NAME))
     else:
-        uuid_offset = int(get_cell(CONFIG_TABLE, 1, CONFIG_USERS_UUID_OFFSET))
+        uuid_offset = int(get_cell(CONFIG_TABLE, 0, CONFIG_USERS_UUID_OFFSET))
         append_row(USERS_TABLE, [int(uuid_offset), int(user.id), user.first_name, user.last_name, 0, 0])
-        print(db[CONFIG_TABLE])
         update_cell(CONFIG_TABLE, 1, CONFIG_USERS_UUID_OFFSET, uuid_offset + 1)
         update.message.reply_text("Welcome! Please use /help to know what is next!")
     return
@@ -141,17 +140,20 @@ def new_enigma(update: Update, context: CallbackContext) -> int:
 
 def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
     """Checks if the enigma id entered by the user is valid and sends the enigma"""
-    enigma_id = update.message.text
+    enigma_id = int(update.message.text)
     # Get t
     enigma_ids = get_col(ENIGMA_TABLE, ENIGMA_UUID)
     if DEBUG:
         print(enigma_ids)
 
     if enigma_id in enigma_ids:
-        update_cell(USERS_TABLE, USERS_ID.index(update.message.from_user.id))
-        update.message.reply_text("You want to try enigma " + enigma_id + ", here it is!")
-        update.message.reply_text(get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_NAME))
-        update.message.reply_text(get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_DESCRIPTION))
+        update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)), USERS_CURRENT_ENIGMA, enigma_id)
+        enigma_text = "<i>Enigma " + str(enigma_id) + "</i>"
+        enigma_text += "\n"
+        enigma_text += "<b>" + get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_NAME) + "</b>"
+        enigma_text += "\n"
+        enigma_text += get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_DESCRIPTION)
+        update.message.reply_text(enigma_text, ParseMode.HTML)
         update.message.reply_text("Please send me the answer you think is correct!")
         return EXPECT_ANSWER_TO_ENIGMA
     else:
@@ -167,6 +169,7 @@ def validate_enigma():
 
 def cancel(update: Update, context: CallbackContext):
     """Handles the abortion of the enigma selection and solving attempt"""
+    # TODO remove trying something
     update.message.reply_text(
         'Enigma selection or resolution cancelled by user. Bye. Send /new_enigma to start again')
     return ConversationHandler.END
@@ -208,8 +211,8 @@ def main():
     dispatcher.add_handler(ConversationHandler(
         entry_points=[CommandHandler('new_enigma', new_enigma)],
         states={
-            EXPECT_ENIGMA_ID: [MessageHandler(Filters.text, confirm_and_send_enigma)],
-            EXPECT_ANSWER_TO_ENIGMA: [MessageHandler(Filters.text, validate_enigma)],
+            EXPECT_ENIGMA_ID: [MessageHandler(Filters.text & (~ Filters.command), confirm_and_send_enigma)],
+            EXPECT_ANSWER_TO_ENIGMA: [MessageHandler(Filters.text & (~ Filters.command), validate_enigma)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     ))
