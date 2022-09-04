@@ -57,14 +57,26 @@ USERS_UUID, USERS_ID, USERS_FIRST_NAME, USERS_LAST_NAME, USERS_SCORE, USERS_CURR
 
 
 def load_db() -> None:
-    """Load the all worksheets of the GSheet to the db dict"""
+    """Load the all worksheets of the GSheet to the db dict
+
+    :returns: None
+    """
     global db
     db = {ws.title: pd.DataFrame(ws.get_all_records()) for ws in spreadsheet.worksheets()}
     return
 
 
-def append_row(table_name: str, row_data: list) -> None:
-    """Appends a row on the DataFrame and the GSheet"""
+def append_row(table_name: str, row_data: list) -> int:
+    """Appends a row on the DataFrame and the GSheet
+
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row_data: The list of data to register
+    :type row_data: list
+
+    :returns: Returns the number of the added row
+    :rtype: int
+    """
 
     # Update local db
     db[table_name].loc[len(db[table_name])] = row_data
@@ -72,21 +84,29 @@ def append_row(table_name: str, row_data: list) -> None:
     # Update GSheet file
     spreadsheet.worksheet(table_name).append_row(row_data)
 
-    return
+    return len(db[table_name]) - 1
 
 
-def update_cell(table_name: str, row: int, col: int, new_value) -> None:
+def update_cell(table_name: str, row: int, col: int, new_value: any) -> None:
     """Updates a cell value on the DataFrame and the GSheet
 
-    row is the number of the data row (first data row will be 1)
-    col is the number of the column (first data column will be 1)
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row: The index of the row (0 is the first data row, without the headers)
+    :type row: int
+    :param col: The index of the column
+    :type col: int
+    :param new_value: The new value to register
+    :param new_value: any
+
+    :returns: None
     """
 
     # Update local db
-    db[table_name].iat[row - 1, col - 1] = new_value
+    db[table_name].iat[row, col] = new_value
 
     # Update GSheet file
-    spreadsheet.worksheet(table_name).update_cell(row + 1, col, new_value)
+    spreadsheet.worksheet(table_name).update_cell(row + 2, col + 1, new_value)
 
     return
 
@@ -94,26 +114,48 @@ def update_cell(table_name: str, row: int, col: int, new_value) -> None:
 def get_row(table_name: str, row: int) -> list:
     """Retrieve a row of data, assuming the local database is up to date
 
-    row is the number of the data row (first data row will be 1)
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row: The index of the row (0 is the first data row, without the headers)
+    :type row: int
 
-    Returns the list with the required values
+    :returns: Returns the values of the required row
+    :rtype: list
     """
-    return db[table_name].iloc[row - 1].values.tolist()
+    return db[table_name].iloc[row].values.tolist()
 
 
 def get_col(table_name: str, col: int) -> list:
-    """Retrieve a row of data, assuming the local database is up to date
+    """Retrieve a column of data, assuming the local database is up to date
 
-    col is the number of the data row (first data row will be 1)
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param col: The index of the column
+    :type col: int
 
-    Returns the list with the required values
+    :returns: Returns the values of the required column
+    :rtype: list
     """
-    return db[table_name].iloc[:, col - 1].values.tolist()
+    return db[table_name].iloc[:, col].values.tolist()
+
 
 
 def get_cell(table_name: str, row: int, col: int) -> any:
-    """Retrieve a cell value, assuming the local database is up to date"""
-    return db[table_name].iat[row, col - 1]
+    """Retrieve a cell's data, assuming the local database is up to date
+
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row: The index of the row (0 is the first data row, without the headers)
+    :type row: int
+    :param col: The index of the column
+    :type col: int
+
+    :returns: Returns the values of the required cell
+    :rtype: any
+    """
+
+    return db[table_name].iat[row, col]
+
 
 
 # Define a few command handlers. These usually take the two arguments update and
