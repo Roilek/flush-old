@@ -40,20 +40,12 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-EXPECT_ENIGMA_ID, EXPECT_ANSWER_TO_ENIGMA = range(2)
-
-CONFIG_TABLE = "config"
-CONFIG_ROW_OFFSET, CONFIG_USERS_UUID_OFFSET = range(2)
-
-ENIGMA_TABLE = "enigma"
-ENIGMA_UUID, ENIGMA_NAME, ENIGMA_DESCRIPTION, ENIGMA_ANSWER, ENIGMA_AUTHOR, ENIGMA_FEEDBACK = range(6)
-
-USERS_TABLE = "users"
-USERS_UUID, USERS_ID, USERS_FIRST_NAME, USERS_LAST_NAME, USERS_SCORE, USERS_CURRENT_ENIGMA = range(6)
-
 
 def load_db() -> None:
-    """Load the all worksheets of the GSheet to the db dict"""
+    """Load the all worksheets of the GSheet to the db dict
+
+    :returns: None
+    """
     global db
     db = {ws.title: pd.DataFrame(ws.get_all_records()) for ws in spreadsheet.worksheets()}
     return
@@ -62,7 +54,14 @@ def load_db() -> None:
 def append_row(table_name: str, row_data: list) -> int:
     """Appends a row on the DataFrame and the GSheet
 
-    Returns the number of the added row"""
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row_data: The list of data to register
+    :type row_data: list
+
+    :returns: Returns the number of the added row
+    :rtype: int
+    """
 
     # Update local db
     db[table_name].loc[len(db[table_name])] = row_data
@@ -73,11 +72,19 @@ def append_row(table_name: str, row_data: list) -> int:
     return len(db[table_name]) - 1
 
 
-def update_cell(table_name: str, row: int, col: int, new_value) -> None:
+def update_cell(table_name: str, row: int, col: int, new_value: any) -> None:
     """Updates a cell value on the DataFrame and the GSheet
 
-    row is the number of the data row (first data row will be 1)
-    col is the number of the column (first data column will be 1)
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row: The index of the row (0 is the first data row, without the headers)
+    :type row: int
+    :param col: The index of the column
+    :type col: int
+    :param new_value: The new value to register
+    :param new_value: any
+
+    :returns: None
     """
 
     # Update local db
@@ -92,25 +99,45 @@ def update_cell(table_name: str, row: int, col: int, new_value) -> None:
 def get_row(table_name: str, row: int) -> list:
     """Retrieve a row of data, assuming the local database is up to date
 
-    row is the number of the data row (first data row will be 1)
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row: The index of the row (0 is the first data row, without the headers)
+    :type row: int
 
-    Returns the list with the required values
+    :returns: Returns the values of the required row
+    :rtype: list
     """
     return db[table_name].iloc[row].values.tolist()
 
 
 def get_col(table_name: str, col: int) -> list:
-    """Retrieve a row of data, assuming the local database is up to date
+    """Retrieve a column of data, assuming the local database is up to date
 
-    col is the number of the data row (first data row will be 1)
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param col: The index of the column
+    :type col: int
 
-    Returns the list with the required values
+    :returns: Returns the values of the required column
+    :rtype: list
     """
     return db[table_name].iloc[:, col].values.tolist()
 
 
 def get_cell(table_name: str, row: int, col: int) -> any:
-    """Retrieve a cell value, assuming the local database is up to date"""
+    """Retrieve a cell's data, assuming the local database is up to date
+
+    :param table_name: The name of the table to modify
+    :type table_name: str
+    :param row: The index of the row (0 is the first data row, without the headers)
+    :type row: int
+    :param col: The index of the column
+    :type col: int
+
+    :returns: Returns the values of the required cell
+    :rtype: any
+    """
+
     return db[table_name].iat[row, col]
 
 
