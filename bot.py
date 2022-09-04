@@ -121,11 +121,14 @@ def get_cell(table_name: str, row: int, col: int) -> any:
 def start(update, context):
     """Send a message when the command /start is issued."""
     user = update.message.from_user
-    if user.id in get_col(USERS_TABLE, USERS_ID):
-        update.message.reply_text("Welcome back!")
+    user_ids = get_col(USERS_TABLE, USERS_ID)
+    if user.id in user_ids:
+        update.message.reply_text("Welcome back " + get_cell(USERS_TABLE, user_ids.index(user.id) + 1, USERS_FIRST_NAME))
     else:
-        uuid_offset = get_cell(CONFIG_TABLE, 1, CONFIG_USERS_UUID_OFFSET)
+        uuid_offset = int(get_cell(CONFIG_TABLE, 1, CONFIG_USERS_UUID_OFFSET))
         append_row(USERS_TABLE, [int(uuid_offset), int(user.id), user.first_name, user.last_name, 0, 0])
+        print(db[CONFIG_TABLE])
+        update_cell(CONFIG_TABLE, 1, CONFIG_USERS_UUID_OFFSET, uuid_offset + 1)
         update.message.reply_text("Welcome! Please use /help to know what is next!")
     return
 
