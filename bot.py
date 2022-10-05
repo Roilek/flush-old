@@ -212,8 +212,8 @@ def construct_enigma_message(enigma_id: int) -> str:
     enigma_ids = get_col(ENIGMA_TABLE, ENIGMA_UUID)
 
     message_parts = list()
-    message_parts.append(' '.join(["<i>Enigma ", str(enigma_id), "</i>"]))
-    message_parts.append(' '.join(["<b>", get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_NAME), "</b>"]))
+    message_parts.append(''.join(["<i>Enigma ", str(enigma_id), "</i>"]))
+    message_parts.append(''.join(["<b>", get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_NAME), "</b>"]))
     message_parts.append(get_cell(ENIGMA_TABLE, enigma_ids.index(enigma_id), ENIGMA_DESCRIPTION))
 
     return '\n'.join(message_parts)
