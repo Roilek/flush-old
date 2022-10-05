@@ -55,6 +55,10 @@ ENIGMA_UUID, ENIGMA_NAME, ENIGMA_DESCRIPTION, ENIGMA_ANSWER, ENIGMA_AUTHOR, ENIG
 USERS_TABLE = "users"
 USERS_UUID, USERS_ID, USERS_FIRST_NAME, USERS_LAST_NAME, USERS_USERNAME, USERS_SCORE, USERS_CURRENT_ENIGMA = range(7)
 
+USERS_ENIGMA_TABLE = "users_enigma"
+USERS_ENIGMA_UUID, USERS_ENIGMA_TIMESTAMP, USERS_ENIGMA_USER_ID, USERS_ENIGMA_ENIGMA_ID, USERS_ENIGMA_ATTEMPT_DATA, USERS_ENIGMA_VALIDATED = range(
+    6)
+
 
 def load_db() -> None:
     """Load the all worksheets of the GSheet to the db dict
@@ -114,7 +118,7 @@ def update_cell(table_name: str, row: int, col: int, new_value: any) -> None:
 def get_row(table_name: str, row: int) -> list:
     """Retrieve a row of data, assuming the local database is up to date
 
-    :param table_name: The name of the table to modify
+    :param table_name: The name of the table to read from
     :type table_name: str
     :param row: The index of the row (0 is the first data row, without the headers)
     :type row: int
@@ -128,7 +132,7 @@ def get_row(table_name: str, row: int) -> list:
 def get_col(table_name: str, col: int) -> list:
     """Retrieve a column of data, assuming the local database is up to date
 
-    :param table_name: The name of the table to modify
+    :param table_name: The name of the table to read from
     :type table_name: str
     :param col: The index of the column
     :type col: int
@@ -142,7 +146,7 @@ def get_col(table_name: str, col: int) -> list:
 def get_cell(table_name: str, row: int, col: int) -> any:
     """Retrieve a cell's data, assuming the local database is up to date
 
-    :param table_name: The name of the table to modify
+    :param table_name: The name of the table to read from
     :type table_name: str
     :param row: The index of the row (0 is the first data row, without the headers)
     :type row: int
@@ -154,6 +158,20 @@ def get_cell(table_name: str, row: int, col: int) -> any:
     """
 
     return db[table_name].iat[row, col]
+
+
+def get_cell_last_cell_of_col(table_name: str, col: int) -> any:
+    """Retrieve the data in the last cell of the specified column
+
+    :param table_name: The name of the table to modify
+    :type: table_name: str
+    :param col: The index of the column
+    :type: col: int
+
+    :returns: Returns the value of the required cell
+    :rtype: any
+    """
+    return db[table_name].iat[len(db[table_name])-1, col]
 
 
 def register_new_user(user: dict) -> None:
@@ -259,11 +277,12 @@ def validate_enigma(update: Update, context: CallbackContext) -> int:
         # Updates the current enigma of the user to put it back to zero
         update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
                     USERS_CURRENT_ENIGMA, 0)
+        append_row(USERS_ENIGMA_TABLE, [get_cell_last_cell_of_col(USERS_ENIGMA_TABLE, USERS_ENIGMA_UUID), 0, int(update.message.from_user.id), enigma_id, user_answer, 1])
         return ConversationHandler.END
     else:
         update.message.reply_text("Sorry, your answer is wrong... You can try again or send /cancel to stop trying.")
+        append_row(USERS_ENIGMA_TABLE, [get_cell_last_cell_of_col(USERS_ENIGMA_TABLE, USERS_ENIGMA_UUID), 0, int(update.message.from_user.id), enigma_id, user_answer, 0])
         return EXPECT_ANSWER_TO_ENIGMA
-    pass
 
 
 def cancel(update: Update, context: CallbackContext):
@@ -299,7 +318,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(os.environ.get('TOKENTEST'), use_context=True)
+    updater = Updater(os.environ.get('TOKEN'), use_context=True)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
