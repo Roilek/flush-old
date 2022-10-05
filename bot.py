@@ -256,6 +256,9 @@ def validate_enigma(update: Update, context: CallbackContext) -> int:
 
     if user_answer in right_answer.split(', '):
         update.message.reply_text("Congratulations, you've found the right answer!")
+        # Updates the current enigma of the user to put it back to zero
+        update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
+                    USERS_CURRENT_ENIGMA, 0)
         return ConversationHandler.END
     else:
         update.message.reply_text("Sorry, your answer is wrong... You can try again or send /cancel to stop trying.")
@@ -294,7 +297,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(os.environ.get('TOKEN'), use_context=True)
+    updater = Updater(os.environ.get('TOKENTEST'), use_context=True)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
