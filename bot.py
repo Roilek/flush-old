@@ -270,6 +270,8 @@ def cancel(update: Update, context: CallbackContext):
     """Handles the abortion of the enigma selection and solving attempt"""
     update.message.reply_text(
         'Enigma selection or resolution cancelled by user. Bye. Send /new_enigma to start again')
+    update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
+                USERS_CURRENT_ENIGMA, 0)
     return ConversationHandler.END
 
 
