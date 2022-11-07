@@ -226,7 +226,7 @@ def start(update: Update, context: CallbackContext) -> None:
 
 def new_enigma(update: Update, context: CallbackContext) -> int:
     """Entry point of the conversation, asks the number of the enigma to the user"""
-    update.message.reply_text("Please send me the id of the enigma you want to try to solve")
+    update.message.reply_text("Please send me the id of the enigma you want to try to solve (or /cancel)")
     return EXPECT_ENIGMA_ID
 
 
@@ -252,34 +252,32 @@ def construct_enigma_message(enigma_id: int) -> str:
 def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
     """Checks if the enigma id entered by the user is valid and sends the enigma"""
     if not update.message.text.isdigit():
-        update.message.reply_text("The enigma id can only be an integer! Please send me a valid id or stop the "
-                                  "process with /cancel.")
-        return EXPECT_ENIGMA_ID
+        update.message.reply_text("The enigma id has to be an integer! Please send me a valid id")
+        return new_enigma(update, context)
 
     enigma_id = int(update.message.text)
     enigma_ids = get_col(ENIGMA_TABLE, ENIGMA_UUID)
 
+    if enigma_id not in enigma_ids:
+        update.message.reply_text("This id is not valid! Please send me a valid id")
+        return new_enigma(update, context)
+
     if DEBUG:
         print(enigma_ids)
 
-    if enigma_id in enigma_ids:
-        previous_attempts = [row for row in get_table(USERS_ENIGMA_TABLE) if (row[USERS_ENIGMA_USER_ID] == update.effective_user.id and row[USERS_ENIGMA_ENIGMA_ID] == enigma_id) and row[USERS_ENIGMA_VALIDATED]]
+    previous_attempts = [row for row in get_table(USERS_ENIGMA_TABLE) if (row[USERS_ENIGMA_USER_ID] == update.effective_user.id and row[USERS_ENIGMA_ENIGMA_ID] == enigma_id) and row[USERS_ENIGMA_VALIDATED]]
 
-        if len(previous_attempts) > 0:
-            update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
-            update.message.reply_text("You have already found the answer to this enigma: <u>" + previous_attempts[0][USERS_ENIGMA_ATTEMPT_DATA] + "</u>", ParseMode.HTML)
-            return new_enigma(update, context)
-        # Updates the current enigma of the user
-        update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
-                    USERS_CURRENT_ENIGMA, enigma_id)
-        # Send the enigma to the user
+    if len(previous_attempts) > 0:
         update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
-        update.message.reply_text("Please send me the answer you think is correct!")
-        return EXPECT_ANSWER_TO_ENIGMA
-    else:
-        update.message.reply_text("Sorry, the enigma id you entered is incorrect... Please try another id or send "
-                                  "/cancel to stop the process")
-        return EXPECT_ENIGMA_ID
+        update.message.reply_text("You have already found the answer to this enigma: <u>" + previous_attempts[0][USERS_ENIGMA_ATTEMPT_DATA] + "</u>", ParseMode.HTML)
+        return new_enigma(update, context)
+    # Updates the current enigma of the user
+    update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
+                USERS_CURRENT_ENIGMA, enigma_id)
+    # Send the enigma to the user
+    update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
+    update.message.reply_text("Please send me the answer you think is correct! (or /cancel)")
+    return EXPECT_ANSWER_TO_ENIGMA
 
 
 def validate_enigma(update: Update, context: CallbackContext) -> int:
