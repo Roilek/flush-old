@@ -14,7 +14,7 @@ Basic Echobot example, repeats messages.
 Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
-
+import json
 import logging
 import telegram
 from telegram import Update, ParseMode
@@ -30,7 +30,7 @@ import pandas as pd
 load_dotenv()
 
 # For debug mode
-DEBUG = os.environ.get('DEBUG')
+DEBUG = int(os.environ.get('DEBUG'))
 
 # Get the spreadsheet
 GS_INSTANCE = gs.service_account(filename="./credentials.json")
@@ -86,7 +86,7 @@ def append_row(table_name: str, row_data: list) -> int:
     db[table_name].loc[len(db[table_name])] = row_data
 
     # Update GSheet file
-    spreadsheet.worksheet(table_name).append_row(row_data)
+    spreadsheet.worksheet(table_name).append_row([str(item) for item in row_data])
 
     return len(db[table_name]) - 1
 
@@ -110,9 +110,21 @@ def update_cell(table_name: str, row: int, col: int, new_value: any) -> None:
     db[table_name].iat[row, col] = new_value
 
     # Update GSheet file
-    spreadsheet.worksheet(table_name).update_cell(row + 2, col + 1, new_value)
+    spreadsheet.worksheet(table_name).update_cell(row + 2, col + 1, str(new_value))
 
     return
+
+
+def get_table(table_name: str) -> list:
+    """Retrieve a table of data, assuming the local database is up to date
+
+    :param table_name: The name of the table to read from
+    :type table_name: str
+
+    :returns: Returns the list of values of the required table
+    :rtype: list
+    """
+    return db[table_name].values.tolist()
 
 
 def get_row(table_name: str, row: int) -> list:
@@ -171,7 +183,7 @@ def get_cell_last_cell_of_col(table_name: str, col: int) -> any:
     :returns: Returns the value of the required cell
     :rtype: any
     """
-    return db[table_name].iat[len(db[table_name])-1, col]
+    return db[table_name].iat[len(db[table_name]) - 1, col]
 
 
 def register_new_user(user: dict) -> None:
@@ -202,11 +214,11 @@ def start(update: Update, context: CallbackContext) -> None:
     user_ids = get_col(USERS_TABLE, USERS_ID)
 
     if user.id in user_ids:
-        message = ' '.join(["Welcome back", get_cell(USERS_TABLE, user_ids.index(user.id), USERS_FIRST_NAME)])
+        message = "Welcome back " + get_cell(USERS_TABLE, user_ids.index(user.id), USERS_FIRST_NAME)
     else:
         register_new_user(user)
-        message = ' '.join(["Welcome", user.first_name, "!", "Please use /help to know what is next!"])
-
+        message = "Welcome " + user.first_name
+    message += "\nPlease use /help to go on!"
     update.message.reply_text(message)
 
     return
@@ -239,6 +251,10 @@ def construct_enigma_message(enigma_id: int) -> str:
 
 def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
     """Checks if the enigma id entered by the user is valid and sends the enigma"""
+    if not update.message.text.isdigit():
+        update.message.reply_text("The enigma id can only be an integer! Please send me a valid id or stop the "
+                                  "process with /cancel.")
+        return EXPECT_ENIGMA_ID
 
     enigma_id = int(update.message.text)
     enigma_ids = get_col(ENIGMA_TABLE, ENIGMA_UUID)
@@ -247,6 +263,12 @@ def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
         print(enigma_ids)
 
     if enigma_id in enigma_ids:
+        previous_attempts = [row for row in get_table(USERS_ENIGMA_TABLE) if (row[USERS_ENIGMA_USER_ID] == update.effective_user.id and row[USERS_ENIGMA_ENIGMA_ID] == enigma_id) and row[USERS_ENIGMA_VALIDATED]]
+
+        if len(previous_attempts) > 0:
+            update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
+            update.message.reply_text("You have already found the answer to this enigma: <u>" + previous_attempts[0][USERS_ENIGMA_ATTEMPT_DATA] + "</u>", ParseMode.HTML)
+            return new_enigma(update, context)
         # Updates the current enigma of the user
         update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
                     USERS_CURRENT_ENIGMA, enigma_id)
@@ -273,15 +295,18 @@ def validate_enigma(update: Update, context: CallbackContext) -> int:
         print(right_answer)
 
     if user_answer in right_answer.split(', '):
-        update.message.reply_text("Congratulations, you've found the right answer!")
+        update.message.reply_text(
+            "Congratulations, you've found the right answer! Send /new_enigma to start a new one!")
         # Updates the current enigma of the user to put it back to zero
         update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
                     USERS_CURRENT_ENIGMA, 0)
-        append_row(USERS_ENIGMA_TABLE, [get_cell_last_cell_of_col(USERS_ENIGMA_TABLE, USERS_ENIGMA_UUID), 0, int(update.message.from_user.id), enigma_id, user_answer, 1])
+        append_row(USERS_ENIGMA_TABLE, [get_cell_last_cell_of_col(USERS_ENIGMA_TABLE, USERS_ENIGMA_UUID), 0,
+                                        int(update.message.from_user.id), enigma_id, user_answer, 1])
         return ConversationHandler.END
     else:
         update.message.reply_text("Sorry, your answer is wrong... You can try again or send /cancel to stop trying.")
-        append_row(USERS_ENIGMA_TABLE, [get_cell_last_cell_of_col(USERS_ENIGMA_TABLE, USERS_ENIGMA_UUID), 0, int(update.message.from_user.id), enigma_id, user_answer, 0])
+        append_row(USERS_ENIGMA_TABLE, [get_cell_last_cell_of_col(USERS_ENIGMA_TABLE, USERS_ENIGMA_UUID), 0,
+                                        int(update.message.from_user.id), enigma_id, user_answer, 0])
         return EXPECT_ANSWER_TO_ENIGMA
 
 
@@ -296,17 +321,20 @@ def cancel(update: Update, context: CallbackContext):
 
 def help(update, context):
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Help!')
+    update.message.reply_text('Hello, send me /new_enigma to start guessing!')
+    return
 
 
-def echo(update, context):
-    """Echo the user message."""
-    update.message.reply_text(update.message.text)
+def warn(update, context):
+    """Warns the user the message has not been understood."""
+    update.message.reply_text("Sorry I did not understand, please try to send a know command to start again")
+    return
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
+    return
 
 
 def main():
@@ -318,7 +346,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(os.environ.get('TOKEN'), use_context=True)
+    updater = Updater(os.environ.get('TOKENREAL'), use_context=True)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
@@ -337,7 +365,7 @@ def main():
     ))
 
     # on noncommand i.e message - echo the message on Telegram
-    dispatcher.add_handler(MessageHandler(Filters.text, echo))
+    dispatcher.add_handler(MessageHandler(Filters.text, warn))
 
     # log all errors
     dispatcher.add_error_handler(error)
