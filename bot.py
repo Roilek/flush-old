@@ -400,6 +400,13 @@ def error(update, context):
     return
 
 
+def update(update, context):
+    """Updates the db by calling load_db"""
+    load_db()
+    update.message.reply_text("The database hase been updated!")
+    return
+
+
 def main():
     """Start the bot."""
 
@@ -417,6 +424,7 @@ def main():
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
+    dispatcher.add_handler(CommandHandler("update", update))
 
     dispatcher.add_handler(ConversationHandler(
         entry_points=[CommandHandler('new_enigma', new_enigma), CommandHandler('contact', contact), CommandHandler('suggest', suggest), CommandHandler('report', report), CommandHandler('add_enigma', add_enigma)],
