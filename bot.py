@@ -44,8 +44,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-EXPECT_ENIGMA_ID, EXPECT_ANSWER_TO_ENIGMA = range(2)
-CONTACT, SUGGEST, REPORT = range(3)
+EXPECT_ENIGMA_ID, EXPECT_ANSWER_TO_ENIGMA, CONTACT, SUGGEST, REPORT, ADD_ENIGMA = range(6)
 
 CONFIG_TABLE = "config"
 CONFIG_ROW_OFFSET, CONFIG_USERS_UUID_OFFSET = range(2)
@@ -222,7 +221,8 @@ def start(update: Update, context: CallbackContext) -> None:
     else:
         register_new_user(user)
         message = "Welcome " + user.first_name
-    message += "\nPlease use /help to go on!"
+    message += "\nPlease use /new_enigma to start guessing!"
+    message += "\nYou can also use /help to see everything this bot can do!"
     update.message.reply_text(message)
 
     return
@@ -269,11 +269,14 @@ def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
     if DEBUG:
         print(enigma_ids)
 
-    previous_attempts = [row for row in get_table(USERS_ENIGMA_TABLE) if (row[USERS_ENIGMA_USER_ID] == update.effective_user.id and row[USERS_ENIGMA_ENIGMA_ID] == enigma_id) and row[USERS_ENIGMA_VALIDATED]]
+    previous_attempts = [row for row in get_table(USERS_ENIGMA_TABLE) if (
+                row[USERS_ENIGMA_USER_ID] == update.effective_user.id and row[USERS_ENIGMA_ENIGMA_ID] == enigma_id) and
+                         row[USERS_ENIGMA_VALIDATED]]
 
     if len(previous_attempts) > 0:
         update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
-        update.message.reply_text("You have already found the answer to this enigma: <u>" + previous_attempts[0][USERS_ENIGMA_ATTEMPT_DATA] + "</u>", ParseMode.HTML)
+        update.message.reply_text("You have already found the answer to this enigma: <u>" + previous_attempts[0][
+            USERS_ENIGMA_ATTEMPT_DATA] + "</u>", ParseMode.HTML)
         return new_enigma(update, context)
     # Updates the current enigma of the user
     update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
@@ -324,27 +327,70 @@ def cancel(update: Update, context: CallbackContext) -> int:
 def contact(update: Update, context: CallbackContext) -> int:
     """Entry point to contact the bot designers"""
     update.message.reply_text(
-        'Your next message will be forwarded to the my developer team !')
+        'Send me anything you want to say to my developers, I\'ll let them know !')
     return CONTACT
+
+
+def suggest(update: Update, context: CallbackContext) -> int:
+    """Entry point to make a suggestion the bot designers"""
+    update.message.reply_text(
+        'Send me your suggestion, I will forward it to my developers!')
+    return SUGGEST
+
+
+def report(update: Update, context: CallbackContext) -> int:
+    """Entry point to contact the bot designers"""
+    update.message.reply_text(
+        'Send me a message to report any bug you would spot. If you think an answer should be considered as valid but '
+        'is not, please let me know!')
+    return REPORT
+
+
+def add_enigma(update: Update, context: CallbackContext) -> int:
+    """Entry point to contact the bot designers"""
+    update.message.reply_text(
+        'You want to suggest a new enigma? Please send your idea and my dev team will discuss it with you!')
+    return ADD_ENIGMA
 
 
 def forward(update: Update, context: CallbackContext) -> int:
     """Forwards the message in the designer's group"""
     update.message.forward(os.environ.get('DESIGNER_GROUP_ID'))
-    update.message.reply_text("Your message have been forwarded to the developer team! Thanks!\nSend /new_enigma to "
-                              "start guessing again")
+    update.message.reply_text("Your message have been forwarded to the developer team! Thanks!\nYou can add comments "
+                              "by replaying to the message you sent or to the answer you might received\nSend "
+                              "/new_enigma to start guessing again")
     return ConversationHandler.END
 
 
 def help(update, context):
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Hello, send me /new_enigma to start guessing!')
+    list_commands = {
+        "/start": "See the greeting message",
+        "/help": "See this help message",
+        "/new_enigma": "Start guessing!",
+        "/stats": "[Not implemented yet]",
+        "/contact": "Contact the dev team",
+        "/suggest": "Suggest a new feature to the dev team",
+        "/add_enigma": "Suggest a new enigma to the team",
+        "/report": "Report a problem (missing indices, my answer should be right but bot says it is wrong",
+    }
+    message = "Here is what this bot can do"
+    update.message.reply_text("Here is what this bot can do:" + "\n  - ".join(
+        ['', *[command + ": " + meaning for command, meaning in list_commands.items()]]))
     return
 
 
-def warn(update, context):
+def warn(update, context: CallbackContext):
     """Warns the user the message has not been understood."""
-    update.message.reply_text("Sorry I did not understand, please try to send a know command to start again")
+    if DEBUG:
+        print(update)
+    if update.message.reply_to_message:
+        if update.message.chat.type == "private":
+            update.message.forward(os.environ.get('DESIGNER_GROUP_ID'))
+        else:
+            context.bot.send_message(update.message.reply_to_message.forward_from.id, update.message.text)
+    else:
+        update.message.reply_text("Sorry I did not understand, please try to send /start or /new_enigma to start again")
     return
 
 
@@ -363,7 +409,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater(os.environ.get('TOKENREAL'), use_context=True)
+    updater = Updater(os.environ.get('TOKEN'), use_context=True)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
@@ -373,22 +419,19 @@ def main():
     dispatcher.add_handler(CommandHandler("help", help))
 
     dispatcher.add_handler(ConversationHandler(
-        entry_points=[CommandHandler('new_enigma', new_enigma)],
+        entry_points=[CommandHandler('new_enigma', new_enigma), CommandHandler('contact', contact), CommandHandler('suggest', suggest), CommandHandler('report', report), CommandHandler('add_enigma', add_enigma)],
         states={
             EXPECT_ENIGMA_ID: [MessageHandler(Filters.text & (~ Filters.command), confirm_and_send_enigma)],
             EXPECT_ANSWER_TO_ENIGMA: [MessageHandler(Filters.text & (~ Filters.command), validate_enigma)],
-        },
-        fallbacks=[CommandHandler('cancel', cancel)],
-        run_async=True
-    ))
-
-    dispatcher.add_handler(ConversationHandler(
-        entry_points=[CommandHandler('contact', contact)],
-        states={
             CONTACT: [MessageHandler(~ Filters.command, forward)],
+            SUGGEST: [MessageHandler(~ Filters.command, forward)],
+            REPORT: [MessageHandler(~ Filters.command, forward)],
+            ADD_ENIGMA: [MessageHandler(~ Filters.command, forward)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
-        run_async=True
+        run_async=True,
+        allow_reentry=True,
+        per_user=True
     ))
 
     # on noncommand i.e message - echo the message on Telegram
