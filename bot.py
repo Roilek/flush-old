@@ -331,6 +331,8 @@ def contact(update: Update, context: CallbackContext) -> int:
 def forward(update: Update, context: CallbackContext) -> int:
     """Forwards the message in the designer's group"""
     update.message.forward(os.environ.get('DESIGNER_GROUP_ID'))
+    update.message.reply_text("Your message have been forwarded to the developer team! Thanks!\nSend /new_enigma to "
+                              "start guessing again")
     return ConversationHandler.END
 
 
