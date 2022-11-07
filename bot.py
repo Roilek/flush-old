@@ -45,6 +45,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 EXPECT_ENIGMA_ID, EXPECT_ANSWER_TO_ENIGMA = range(2)
+CONTACT, SUGGEST, REPORT = range(3)
 
 CONFIG_TABLE = "config"
 CONFIG_ROW_OFFSET, CONFIG_USERS_UUID_OFFSET = range(2)
@@ -210,6 +211,9 @@ def register_new_user(user: dict) -> None:
 def start(update: Update, context: CallbackContext) -> None:
     """Greets the old user and greet + register the new user"""
 
+    if DEBUG:
+        print(update)
+
     user = update.message.from_user
     user_ids = get_col(USERS_TABLE, USERS_ID)
 
@@ -308,12 +312,25 @@ def validate_enigma(update: Update, context: CallbackContext) -> int:
         return EXPECT_ANSWER_TO_ENIGMA
 
 
-def cancel(update: Update, context: CallbackContext):
+def cancel(update: Update, context: CallbackContext) -> int:
     """Handles the abortion of the enigma selection and solving attempt"""
     update.message.reply_text(
         'Enigma selection or resolution cancelled by user. Bye. Send /new_enigma to start again')
     update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
                 USERS_CURRENT_ENIGMA, 0)
+    return ConversationHandler.END
+
+
+def contact(update: Update, context: CallbackContext) -> int:
+    """Entry point to contact the bot designers"""
+    update.message.reply_text(
+        'Your next message will be forwarded to the my developer team !')
+    return CONTACT
+
+
+def forward(update: Update, context: CallbackContext) -> int:
+    """Forwards the message in the designer's group"""
+    update.message.forward(os.environ.get('DESIGNER_GROUP_ID'))
     return ConversationHandler.END
 
 
@@ -359,7 +376,17 @@ def main():
             EXPECT_ENIGMA_ID: [MessageHandler(Filters.text & (~ Filters.command), confirm_and_send_enigma)],
             EXPECT_ANSWER_TO_ENIGMA: [MessageHandler(Filters.text & (~ Filters.command), validate_enigma)],
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks=[CommandHandler('cancel', cancel)],
+        run_async=True
+    ))
+
+    dispatcher.add_handler(ConversationHandler(
+        entry_points=[CommandHandler('contact', contact)],
+        states={
+            CONTACT: [MessageHandler(~ Filters.command, forward)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+        run_async=True
     ))
 
     # on noncommand i.e message - echo the message on Telegram
