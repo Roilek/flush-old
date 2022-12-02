@@ -451,6 +451,8 @@ def main():
     # Start the Bot
     updater.start_polling()
 
+    updater.bot.sendMessage(chat_id=os.environ.get('DESIGNER_GROUP_ID'), text="👋 Hi! I'm awake!")
+
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
