@@ -183,6 +183,7 @@ def get_cell_last_cell_of_col(table_name: str, col: int) -> any:
     :returns: Returns the value of the required cell
     :rtype: any
     """
+    print(db)
     return db[table_name].iat[len(db[table_name]) - 1, col]
 
 
@@ -275,8 +276,8 @@ def confirm_and_send_enigma(update: Update, context: CallbackContext) -> int:
 
     if len(previous_attempts) > 0:
         update.message.reply_text(construct_enigma_message(enigma_id), ParseMode.HTML)
-        update.message.reply_text("You have already found the answer to this enigma: <u>" + previous_attempts[0][
-            USERS_ENIGMA_ATTEMPT_DATA] + "</u>", ParseMode.HTML)
+        update.message.reply_text("You have already found the answer to this enigma: <u>" + str(previous_attempts[0][
+            USERS_ENIGMA_ATTEMPT_DATA]) + "</u>", ParseMode.HTML)
         return new_enigma(update, context)
     # Updates the current enigma of the user
     update_cell(USERS_TABLE, get_col(USERS_TABLE, USERS_ID).index(int(update.message.from_user.id)),
