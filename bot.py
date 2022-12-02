@@ -183,7 +183,6 @@ def get_cell_last_cell_of_col(table_name: str, col: int) -> any:
     :returns: Returns the value of the required cell
     :rtype: any
     """
-    print(db)
     return db[table_name].iat[len(db[table_name]) - 1, col]
 
 
